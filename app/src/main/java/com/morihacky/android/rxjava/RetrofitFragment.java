@@ -10,14 +10,17 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
-import butterknife.ButterKnife;
-import butterknife.InjectView;
-import butterknife.OnClick;
+
 import com.morihacky.android.rxjava.retrofit.Contributor;
 import com.morihacky.android.rxjava.retrofit.GithubApi;
 import com.morihacky.android.rxjava.retrofit.User;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import butterknife.ButterKnife;
+import butterknife.InjectView;
+import butterknife.OnClick;
 import retrofit.RequestInterceptor;
 import retrofit.RestAdapter;
 import rx.Observable;
@@ -85,34 +88,38 @@ public class RetrofitFragment
         _adapter.clear();
 
         _subscriptions.add(//
-              _api.contributors(_username.getText().toString(), _repo.getText().toString())
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new Observer<List<Contributor>>() {
-                        @Override
-                        public void onCompleted() {
-                            Timber.d("Retrofit call 1 completed");
-                        }
+                _api.contributors(_username.getText().toString(), _repo.getText().toString())
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .flatMap(new Func1<List<Contributor>, Observable<Contributor>>() {
+                            @Override
+                            public Observable<Contributor> call(List<Contributor> contributors) {
+                                return Observable.from(contributors);
+                            }
+                        })
+                        .subscribe(new Observer<Contributor>() {
+                            @Override
+                            public void onCompleted() {
+                                Timber.d("Retrofit call 1 completed");
+                            }
 
-                        @Override
-                        public void onError(Throwable e) {
-                            Timber.e(e,
-                                  "woops we got an error while getting the list of contributors");
-                        }
+                            @Override
+                            public void onError(Throwable e) {
+                                Timber.e(e,
+                                        "woops we got an error while getting the list of contributors");
+                            }
 
-                        @Override
-                        public void onNext(List<Contributor> contributors) {
-                            for (Contributor c : contributors) {
+                            @Override
+                            public void onNext(Contributor c) {
                                 _adapter.add(format("%s has made %d contributions to %s",
-                                      c.login,
-                                      c.contributions,
-                                      _repo.getText().toString()));
+                                        c.login,
+                                        c.contributions,
+                                        _repo.getText().toString()));
 
                                 Timber.d("%s has made %d contributions to %s",
-                                      c.login,
-                                      c.contributions,
-                                      _repo.getText().toString());
-                            }
+                                        c.login,
+                                        c.contributions,
+                                  _repo.getText().toString());
                         }
                     }));
     }
